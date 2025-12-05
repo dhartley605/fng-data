@@ -2,56 +2,36 @@ name: Update FNG Data Daily
 
 on:
   schedule:
-    # Runs every day at 12:00 UTC
-    - cron: "0 12 * * *"
-  workflow_dispatch:
+    - cron: "0 12 * * *"  # daily at 12:00 UTC
+  workflow_dispatch:      # allows manual run
 
 jobs:
   update-fng:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # allows pushing with GITHUB_TOKEN
 
     steps:
-      # ------------------------------
-      # Check out repository
-      # ------------------------------
-      - name: Checkout repository
+      - name: Checkout repo
         uses: actions/checkout@v3
 
-      # ------------------------------
-      # Debug: Show repository name
-      # ------------------------------
-      - name: Debug repo name
-        run: echo "Repo = ${{ github.repository }}"
-
-      # ------------------------------
-      # Set up Python
-      # ------------------------------
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: "3.x"
 
-      # ------------------------------
-      # Install dependencies
-      # ------------------------------
       - name: Install dependencies
         run: pip install requests
 
-      # ------------------------------
-      # Run the Python script
-      # ------------------------------
       - name: Run FNG fetch script
         run: python fetch_fng.py
         env:
           CMC_API_KEY: ${{ secrets.CMC_API_KEY }}
 
-      # ------------------------------
-      # Commit + push using encoded PAT
-      # ------------------------------
-      - name: Commit and Push changes
+      - name: Commit & push changes
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "actions@github.com"
           git add fng.json
-          git commit -m "Daily F&G update" || echo "No changes"
-          git push https://${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }} HEAD:main
+          git commit -m "Daily F&G update" || echo "No changes to commit"
+          git push
