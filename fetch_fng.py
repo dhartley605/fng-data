@@ -1,20 +1,13 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Dec  4 17:59:26 2025
-
-@author: prade_mi
-"""
-
 import requests
 import json
 import os
- 
+
 # -------------------------------------
 # CONFIG
 # -------------------------------------
-API_KEY = os.getenv("CMC_API_KEY")       # Pull API key from environment variable (safe for GitHub Actions)
-OUTPUT_FILE = "fng.json"                 # JSON output file
-LIMIT = 5000                             # Max available history
+API_KEY = os.getenv("CMC_API_KEY")
+OUTPUT_FILE = "fng.json"
+LIMIT = 5000
 
 if not API_KEY:
     raise ValueError("Missing CMC_API_KEY environment variable")
@@ -25,23 +18,31 @@ if not API_KEY:
 url = f"https://pro-api.coinmarketcap.com/v3/fear-and-greed/historical?limit={LIMIT}"
 headers = {"X-CMC_PRO_API_KEY": API_KEY}
 
+print("Fetching Fear & Greed Index data...")
 response = requests.get(url, headers=headers)
 
+print("HTTP Status Code:", response.status_code)
 if response.status_code != 200:
-    print("Error fetching data:", response.status_code, response.text)
+    print("Error fetching data:")
+    print(response.text)
     raise SystemExit(1)
 
-data = response.json().get("data", [])
+resp_json = response.json()
+data = resp_json.get("data", [])
+
+if not data:
+    print("Warning: No data received from API. Response JSON:")
+    print(resp_json)
 
 # -------------------------------------
 # Format Into Date -> Value Dictionary
 # -------------------------------------
 fng_dict = {}
-
 for item in data:
-    date_str = item["timestamp"][:10]       # Extract YYYY-MM-DD
-    value = item["value"]
-    fng_dict[date_str] = value
+    date_str = item["timestamp"][:10]
+    value = item.get("value")
+    if value is not None:
+        fng_dict[date_str] = value
 
 # -------------------------------------
 # Save Output File
