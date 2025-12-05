@@ -7,7 +7,7 @@ import os
 # -------------------------------------
 API_KEY = os.getenv("CMC_API_KEY")
 OUTPUT_FILE = "fng.json"
-LIMIT = 5000
+LIMIT = 500
 
 if not API_KEY:
     raise ValueError("Missing CMC_API_KEY environment variable")
@@ -51,3 +51,4 @@ with open(OUTPUT_FILE, "w") as f:
     json.dump(fng_dict, f, indent=2)
 
 print(f"Saved {len(fng_dict)} records to {OUTPUT_FILE}")
+
