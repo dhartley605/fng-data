@@ -7,7 +7,7 @@ import os
 # -------------------------------------
 API_KEY = os.getenv("CMC_API_KEY")
 OUTPUT_FILE = "fng.json"
-LIMIT = 500
+LIMIT = 500  # CMC API allows max 500
 
 if not API_KEY:
     raise ValueError("Missing CMC_API_KEY environment variable")
@@ -39,9 +39,9 @@ if not data:
 # -------------------------------------
 fng_dict = {}
 for item in data:
-    date_str = item["timestamp"][:10]
+    date_str = item.get("timestamp", "")[:10]
     value = item.get("value")
-    if value is not None:
+    if date_str and value is not None:
         fng_dict[date_str] = value
 
 # -------------------------------------
@@ -51,4 +51,3 @@ with open(OUTPUT_FILE, "w") as f:
     json.dump(fng_dict, f, indent=2)
 
 print(f"Saved {len(fng_dict)} records to {OUTPUT_FILE}")
-
