@@ -5,48 +5,79 @@ on:
     - cron: '0 12 * * *'  # Runs daily at 12:00 UTC
   workflow_dispatch:     # Allows manual run
 
+permissions:
+  contents: write    # allow pushing changes back to the repo
+  actions: read       # allow reading actions metadata if needed
+
 jobs:
   update-fng:
     runs-on: ubuntu-latest
 
     steps:
-      # -------------------------------
-      # Checkout repository with credentials
-      # -------------------------------
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
-          persist-credentials: true   # Required for push using token
+          persist-credentials: true
 
-      # -------------------------------
-      # Set up Python
-      # -------------------------------
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.x'
+          python-version: '3.9'  # pin to a specific version to avoid drift
 
-      # -------------------------------
-      # Install dependencies
-      # -------------------------------
       - name: Install dependencies
-        run: pip install requests
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-      # -------------------------------
-      # Run Python script to fetch F&G
-      # -------------------------------
+      - name: Verify API key presence
+        run: |
+          python - <<'PY'
+import os, sys
+key = os.getenv("CMC_API_KEY")
+print("CMC_API_KEY_FOUND" if key else "CMC_API_KEY_MISSING")
+if not key:
+    sys.exit(1)
+PY
+        env:
+          CMC_API_KEY: ${{ secrets.CMC_API_KEY }}
+
       - name: Run F&G fetch script
         run: python fetch_fng.py
         env:
           CMC_API_KEY: ${{ secrets.CMC_API_KEY }}
 
-      # -------------------------------
-      # Commit & Push changes using GITHUB_TOKEN
-      # -------------------------------
-      - name: Commit & Push changes
+      - name: Show repository state
         run: |
-          git config --global user.name "github-actions"
-          git config --global user.email "actions@github.com"
+          git status
+          ls -la
+
+      - name: Commit & Push changes to automation branch
+        run: |
+          BRANCH=${{ github.event.inputs.branch || 'auto/update-fng' }}
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git checkout -B "$BRANCH"
           git add fng.json
-          git commit -m "Daily F&G update" || echo "No changes to commit"
-          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }} HEAD:main
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Daily F&G update"
+          fi
+          git push origin "$BRANCH" || exit 1
+
+      - name: Create Pull Request (optional)
+        if: always()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const branch = process.env.BRANCH || 'auto/update-fng';
+            console.log("PR creation is optional and can be enabled by uncommenting the PR block.");
+            // Example to create a PR:
+            // await github.pulls.create({
+            //   owner: context.repo.owner,
+            //   repo: context.repo.repo,
+            //   title: "Daily F&G update",
+            //   head: branch,
+            //   base: "main"
+            // });
+            console.log("PR creation step is currently disabled in this file.")
