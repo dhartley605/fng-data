@@ -3,38 +3,48 @@ name: Update FNG Data Daily
 on:
   schedule:
     - cron: '0 12 * * *'  # Runs daily at 12:00 UTC
-  workflow_dispatch:     # Optional manual run
+  workflow_dispatch:     # Allows manual run
 
 jobs:
   update-fng:
     runs-on: ubuntu-latest
 
     steps:
+      # -------------------------------
       # Checkout repository
+      # -------------------------------
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      # -------------------------------
       # Set up Python
+      # -------------------------------
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.x'
 
+      # -------------------------------
       # Install dependencies
+      # -------------------------------
       - name: Install dependencies
         run: pip install requests
 
+      # -------------------------------
       # Run Python script
+      # -------------------------------
       - name: Run F&G fetch script
         run: python fetch_fng.py
         env:
           CMC_API_KEY: ${{ secrets.CMC_API_KEY }}
 
+      # -------------------------------
       # Commit & push changes using PAT
+      # -------------------------------
       - name: Commit & Push changes
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "actions@github.com"
           git add fng.json
           git commit -m "Daily F&G update" || echo "No changes to commit"
-          git push https://{{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }} HEAD:main
+          git push https://${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }} HEAD:main
