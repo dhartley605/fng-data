@@ -2,19 +2,15 @@ import requests
 import json
 import os
 
-# -------------------------------
 # CONFIG
-# -------------------------------
-API_KEY = os.getenv("CMC_API_KEY")    # from GitHub Secrets
+API_KEY = os.getenv("CMC_API_KEY")  # From GitHub Secrets
 OUTPUT_FILE = "fng.json"
-LIMIT = 500                            # CMC max limit
+LIMIT = 500  # Max records CMC allows
 
 if not API_KEY:
     raise ValueError("Missing CMC_API_KEY environment variable")
 
-# -------------------------------
-# Fetch Historical Data
-# -------------------------------
+# Fetch historical data
 url = f"https://pro-api.coinmarketcap.com/v3/fear-and-greed/historical?limit={LIMIT}"
 headers = {"X-CMC_PRO_API_KEY": API_KEY}
 
@@ -26,25 +22,15 @@ if response.status_code != 200:
     print("Error fetching data:", response.text)
     raise SystemExit(1)
 
-resp_json = response.json()
-data = resp_json.get("data", [])
-
-if not data:
-    print("Warning: No data received from API")
-    
-# -------------------------------
-# Format into Date -> Value
-# -------------------------------
+data = response.json().get("data", [])
 fng_dict = {}
-for item in data:
-    date_str = item.get("timestamp", "")[:10]
-    value = item.get("value")
-    if date_str and value is not None:
-        fng_dict[date_str] = value
 
-# -------------------------------
-# Save output file
-# -------------------------------
+for item in data:
+    date_str = item["timestamp"][:10]  # YYYY-MM-DD
+    value = item["value"]
+    fng_dict[date_str] = value
+
+# Save JSON file
 with open(OUTPUT_FILE, "w") as f:
     json.dump(fng_dict, f, indent=2)
 
