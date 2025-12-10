@@ -29,7 +29,6 @@ jobs:
       # 4️⃣ Run FNG fetch script (produces CSV)
       - name: Run FNG fetch script
         run: python fetch_fng.py
-        working-directory: ./fng-data
         env:
           CMC_API_KEY: ${{ secrets.CMC_API_KEY }}
 
@@ -41,4 +40,3 @@ jobs:
           git add pine_seeds_fng/FNG.csv
           git commit -m "Daily F&G CSV update" || echo "No changes to commit"
           git push
-        working-directory: ./fng-data
