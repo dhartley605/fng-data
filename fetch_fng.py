@@ -1,38 +1,56 @@
-import requests
-import json
 import os
+import csv
+import requests
 from datetime import datetime
 
-API_KEY = os.getenv("CMC_API_KEY")
-OUTPUT_FILE = "fng.json"
+# --------------------------
+# Config
+# --------------------------
+API_KEY = os.getenv("CMC_API_KEY")  # CoinMarketCap API key
+OUTPUT_FOLDER = "pine_seeds_fng"
+CSV_FILE = "FNG.csv"
 LIMIT = 500
 
-if not API_KEY:
-    raise ValueError("Missing CMC_API_KEY environment variable")
-
+# --------------------------
+# Fetch JSON from CMC
+# --------------------------
 url = f"https://pro-api.coinmarketcap.com/v3/fear-and-greed/historical?limit={LIMIT}"
 headers = {"X-CMC_PRO_API_KEY": API_KEY}
 
-print("Fetching Fear & Greed Index…")
-r = requests.get(url, headers=headers)
-print("Status:", r.status_code)
-
-if r.status_code != 200:
-    print(r.text)
+response = requests.get(url, headers=headers)
+if response.status_code != 200:
+    print("Error fetching data:", response.status_code, response.text)
     raise SystemExit(1)
 
-records = r.json().get("data", [])
-result = {}
+data = response.json().get("data", [])
 
-for item in records:
-    # Convert unix timestamp → YYYY-MM-DD
+# --------------------------
+# Convert to Pine Seeds CSV
+# --------------------------
+if not os.path.exists(OUTPUT_FOLDER):
+    os.makedirs(OUTPUT_FOLDER)
+
+filepath = os.path.join(OUTPUT_FOLDER, CSV_FILE)
+
+# Load existing data if any
+data_dict = {}
+if os.path.exists(filepath):
+    with open(filepath, "r", encoding="utf-8") as f:
+        for row in csv.reader(f):
+            data_dict[row[0]] = row[1:]
+
+# Update with latest F&G values
+for item in data:
     ts = int(item["timestamp"])
-    date = datetime.utcfromtimestamp(ts).strftime("%Y-%m-%d")
+    date = datetime.utcfromtimestamp(ts).strftime("%Y%m%d")
+    val = item["value"]
+    data_dict[date] = [val, val, val, val, 0, 0]  # open, high, low, close, volume, spread
 
-    result[date] = item["value"]
+# Write CSV
+with open(filepath, "w", encoding="utf-8", newline='') as f:
+    writer = csv.writer(f)
+    for date in sorted(data_dict.keys()):
+        row = [date] + data_dict[date]
+        writer.writerow(row)
 
-# Save file
-with open(OUTPUT_FILE, "w") as f:
-    json.dump(result, f, indent=2)
-
-print(f"Saved {len(result)} records to {OUTPUT_FILE}")
+print(f"Saved {len(data_dict)} records to {filepath}")
